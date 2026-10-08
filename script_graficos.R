@@ -955,3 +955,41 @@ ggplot(mtcars, aes(x = wt, y = mpg, color = factor(cyl))) +
   theme_pubr() +
   scale_color_npg()
 
+
+# Ejercicio
+
+Toma el gráfico p, aplícale theme_pubr() + paleta ggsci::scale_color_npg(), 
+combínalo con un segundo gráfico (boxplot de mpg por cyl) usando patchwork, 
+y expórtalo como TIFF a 300 dpi con 174 mm de ancho (columna doble).
+
+load("data/datos.cancer.RData")
+cancer
+cancer2<-cancer[cancer$tumor%in%c("MAMA","PROSTATA","COLORRECTAL"),]
+p<-ggplot(cancer2,aes(x = periodo,y = tasa,shape=sexo,colour = tumor)) +
+  geom_line() +
+  geom_point(size = 1)
+p
+
+
+p1<- p + 
+ggpubr::theme_pubr()+
+ggsci::scale_color_npg()
+
+p2 <- ggplot(mtcars, aes(factor(cyl), mpg)) + 
+  geom_boxplot()
+
+library(patchwork)
+ejercicio <- p1 / p2
+ejercicio
+
+
+ggsave("res/caribemix.tiff", plot = ejercicio, width = 174, height = 200, units = "mm",
+       dpi = 300, scale = 1)
+
+
+object.size(ejercicio)
+format(object.size(ejercicio), units = "MB")
+file.size("res/caribemix.tiff") / 1024^2 # En MB
+
+
+
