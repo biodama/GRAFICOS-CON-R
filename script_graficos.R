@@ -623,3 +623,335 @@ ggplot(cancer, aes(x = periodo, y = tasa, colour = tumor, linetype = sexo)) +
   p2 / (p1 | p3)
   
 
+##################################################################
+##################################################################  
+##################################################################  
+
+rm(list=ls())
+gc()
+
+setwd("/Users/pfernandezn/Desktop/CURSO_GRAFICOS_R_FI_2026/") 
+
+####### MAPAS #############
+  
+load("data/peninsula.RData")  
+  
+ls()
+
+class(peninsula)
+
+library(sf)
+
+library(ggplot2)
+
+ggplot(peninsula) +
+  geom_sf(aes(fill = NAME_1), alpha = 0.1, col = "grey80", show.legend = FALSE)
+
+ggplot(peninsula) +
+  geom_sf(aes(fill = NAME_1), show.legend = TRUE)
+
+ggplot(peninsula) +
+  geom_sf(aes(fill = NAME_1), alpha = 0.1, col = "grey80", show.legend = FALSE)+
+  geom_sf_text(aes(label = NAME_2), size = 2) 
+
+ggplot(peninsula) +
+  geom_sf(aes(fill = NAME_1), alpha = 0.1, col = "grey80", show.legend = FALSE)+
+  geom_sf_text(aes(label = NAME_2), size = 2) +
+  theme_bw()
+
+head(st_drop_geometry(peninsula))
+
+library(data.table)
+
+paro <- fread("data/paro.csv", encoding = "UTF-8")
+paro[, `:=`(id, sub(" ", "0", format(Prov.id, width = 2)))]
+Paro <- subset(paro, Año == 2012 & Trimestre == "I")
+
+peninsula$"id" <- peninsula$"CC_2"
+
+peninsula.paro <- merge(peninsula, Paro, by = "id")
+
+head(st_drop_geometry(peninsula.paro))
+
+table(peninsula.paro$"Sexo")
+
+mapa <- ggplot(peninsula.paro) +
+  geom_sf(aes(fill = Tasa.paro), colour = "grey80", size = 0.1)+
+  facet_grid(~Sexo)+
+  scale_fill_gradient("Tasa de paro", low = "aliceblue", high = "steelblue4") +
+  theme_bw()
+mapa
+
+
+mapa <- ggplot(peninsula.paro) +
+  geom_sf(aes(fill = Tasa.paro), colour = "grey80", size = 0.1)+
+  geom_sf_text(aes(label = NAME_2), size = 1)+
+  facet_grid(~Sexo)+
+  scale_fill_gradient("Tasa de paro", low = "aliceblue", high = "steelblue4") +
+  theme_bw()
+mapa
+
+
+# Cambio de paleta
+
+Paro2 <- paro[Año%in%2014 & Trimestre%in%"III",]
+peninsula.paro2 <- merge(peninsula, Paro2, by.x = "id", by.y = "id")
+
+ggplot(peninsula.paro2) +
+  geom_sf(aes(fill = Tasa.paro), colour = "grey80", size = 0.1) +
+  facet_grid(~Sexo) +
+  scale_fill_viridis_c("Tasa de paro", option = "plasma") +
+  labs(title = "Tasa de paro por provincia — 2014 T3") +
+  theme_minimal()
+
+ggplot(peninsula.paro2) +
+  geom_sf(aes(fill = Tasa.paro), colour = "grey80", size = 0.1) +
+  geom_sf_text(aes(label = NAME_2), size = 1)+
+  facet_grid(~Sexo) +
+  scale_fill_viridis_c("Tasa de paro", option = "plasma") +
+  labs(title = "Tasa de paro por provincia — 2014 T3") +
+  theme_minimal()
+
+# Cosas adicionales
+
+library(sf)
+
+canarias <- st_read("data/municipios_canarias/ll_municipales_inspire_canarias_wgs84.shp")
+class(canarias)
+head(st_drop_geometry(canarias))
+ggplot(canarias) +
+  geom_sf(aes(fill = NAME_BOUND), alpha = 0.6, col = "black", show.legend = FALSE)
+
+ggplot(peninsula.paro2) +
+  geom_sf(aes(fill = Tasa.paro), colour = "grey80", size = 0.1) +
+  geom_sf_text(aes(label = NAME_2), size = 1)+
+  facet_grid(~Sexo) +
+  scale_fill_viridis_c("Tasa de paro", option = "plasma",direction=-1) +
+  labs(title = "Tasa de paro por provincia — 2014 T3") +
+  theme_minimal()
+
+
+# MAPAS INTERACTIVOS
+
+mapa <- ggplot(peninsula.paro) +
+  geom_sf(aes(fill = Tasa.paro), colour = "grey80", size = 0.1)+
+  facet_grid(~Sexo)+
+  scale_fill_gradient("Tasa de paro", low = "aliceblue", high = "steelblue4") +
+  theme_bw()
+mapa
+
+
+library(plotly)
+
+ggplotly(mapa)
+
+mapa2 <- ggplot(peninsula.paro) +
+  geom_sf(aes(fill = Tasa.paro,
+              text = paste0(NAME_2, "<br>Tasa de paro: ", round(Tasa.paro))),
+              colour = "grey80", size = 0.1)+
+  facet_grid(~Sexo)+
+  scale_fill_gradient("Tasa de paro", low = "aliceblue", high = "steelblue4") +
+  theme_bw()
+ggplotly(mapa2,tooltip = "text")
+
+
+# EXPORTAR GRAFICOS
+
+ggsave("res/grafico_basico.png", plot = mapa)
+
+# Raster para web
+ggsave("res/grafico_web.png", plot = mapa, width = 16, height = 10, units = "cm", dpi = 96)
+
+# Raster de alta resolución para imprimir
+ggsave("res/grafico_print.png", plot = mapa, width = 16, height = 10, units = "cm", dpi = 300)
+
+# Formato exigido por muchas revistas
+ggsave("res/grafico_revista.tiff", plot = mapa, width = 16, height = 10, units = "cm", dpi = 600)
+
+
+# Vectorial, tamaño "infinito" en calidad
+ggsave("res/grafico_vector.pdf", plot = mapa, width = 16, height = 10, units = "cm")
+
+
+# Metodo clasico
+
+png("res/grafico_manual.png", width = 16, height = 10, units = "cm", res = 300)
+mapa
+dev.off()
+
+canarias <- st_read("data/municipios_canarias/ll_municipales_inspire_canarias_wgs84.shp")
+class(canarias)
+head(st_drop_geometry(canarias))
+mapa_canarias<-ggplot(canarias) +
+  geom_sf(aes(fill = NAME_BOUND), alpha = 0.6, col = "black", show.legend = FALSE)
+
+pdf("res/grafico_manual_dos_graficos.pdf", width = 16 / 2.54, height = 10 / 2.54)  # pdf() usa pulgadas
+mapa
+mapa_canarias
+dev.off()
+
+
+library(gridExtra)
+
+pdf_graficos <- marrangeGrob(
+  list(mapa, mapa_canarias),
+  nrow = 1,
+  ncol = 1
+)
+ggsave(
+  "res/grafico_manual_dos_graficos_ggsave.pdf",
+  pdf_graficos,
+  width = 16,
+  height = 10,
+  units = "cm"
+)
+
+
+pdf_graficos2 <- marrangeGrob(
+  list(mapa, mapa_canarias),
+  nrow = 1,
+  ncol = 2
+)
+ggsave(
+  "res/grafico_manual_dos_graficos_ggsave2.pdf",
+  pdf_graficos2,
+  width = 16,
+  height = 10,
+  units = "cm"
+)
+
+
+
+# Temas predefinidos
+
+load("data/datos.cancer.RData")
+
+cancer # Base de datos en formato data.table y esta en long
+
+cancer2<-cancer[cancer$tumor%in%c("MAMA","PROSTATA","COLORRECTAL"),]
+
+p<-ggplot(cancer2,aes(x = periodo,y = tasa,shape=sexo,colour = tumor)) +
+  geom_line() +
+  geom_point(size = 1)
+
+p
+
+
+library(cowplot)
+p + theme_cowplot() 
+
+
+p + cowplot::theme_cowplot() 
+
+
+
+
+# Paletas de colores
+
+p_bueno <- p + theme_cowplot()
+
+p_bueno + ggsci::scale_color_npg() 
+
+p_bueno + ggsci::scale_color_aaas() 
+
+p_bueno + scale_color_brewer(palette = "Set2") 
+
+
+
+
+temazo <- theme_cowplot()+ 
+  theme(
+  plot.title = element_text(face = "bold", size = 10),
+  axis.title = element_text(size = 15),
+  axis.text = element_text(size = 10, color = "black"),
+  legend.position = "top",
+  legend.title = element_text(size = 15),
+  panel.grid = element_blank(),
+  axis.line = element_line(linewidth = 0.4),
+  axis.ticks = element_line(linewidth = 0.4)
+)
+
+p + temazo
+
+
+source("temazos.R")
+
+p + temazo_verano
+
+p + temazo_otono
+
+
+# Combinar graficos en una misma figura
+
+library(patchwork)
+
+p1 <- ggplot(mtcars, aes(wt, mpg)) + 
+  geom_point() + 
+  temazo_otono
+p1
+
+p2 <- ggplot(mtcars, aes(factor(cyl), mpg)) + 
+  geom_boxplot() + 
+  temazo_otono
+p2
+
+p3 <- ggplot(mtcars, aes(factor(gear), mpg)) + 
+  geom_boxplot() + 
+  temazo_otono
+p3
+
+
+(p1 | p2 | p3) + plot_annotation(tag_levels = "A") 
+
+
+
+cowplot::plot_grid(p1, p2, labels = c("(A)", "(B)"), ncol = 2)
+
+cowplot::plot_grid(p1, p2,p3, labels = c("(A)", "(B)","(C)"), ncol = 2)
+
+
+# IA
+
+“Con el data frame mtcars, haz un scatterplot de mpg frente a wt, 
+coloreado por cyl como factor, tema theme_pubr(), 
+paleta ggsci::scale_color_npg(), 
+y prepara el ggsave() para exportarlo como PDF vectorial de 16x10 cm.
+No te inventes datos, y ajustate a colores para daltonicos”
+
+library(ggplot2)
+library(ggpubr)
+library(ggsci)
+
+p <- ggplot(mtcars,
+  aes(x = wt, y = mpg, colour = factor(cyl))) +
+  geom_point(size = 3, alpha = 0.9) +
+  labs(
+    x = "Peso (1000 lb)",
+    y = "Consumo (mpg)",
+    colour = "Cilindros"
+  ) +
+  scale_color_npg() +
+  theme_pubr()
+
+p
+
+# Exportación PDF vectorial (16 x 10 cm)
+ggsave(
+  filename = "res/mtcars_mpg_vs_wt.pdf",
+  plot = p,
+  device = cairo_pdf,  # PDF vectorial con buena gestión de fuentes
+  width = 16,
+  height = 10,
+  units = "cm"
+)
+
+
+library(ggpubr)
+library(ggsci)
+
+ggplot(mtcars, aes(x = wt, y = mpg, color = factor(cyl))) +
+  geom_point(size = 3) +
+  labs(title = "Consumo vs. peso", x = "Peso (1000 lbs)", y = "MPG", color = "Cilindros") +
+  theme_pubr() +
+  scale_color_npg()
+
